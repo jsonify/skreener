@@ -19,6 +19,9 @@ final class Coordinator {
         }
     }
 
+    /// Scrolling capture: select the scrollable part of the screen, then scroll or Auto-Scroll.
+    func scrollingCapture() { openCaptureToolbar(intent: .screenshot, target: .scrolling) }
+
     /// ⌘⇧5: the capture toolbar, starting in window mode.
     func captureWindow() { openCaptureToolbar(intent: .screenshot, target: .window) }
 
@@ -32,12 +35,17 @@ final class Coordinator {
                 self?.perform(request, frozen: frozen)
             }
         }
-        if intent == .screenshot { withFrozenScreen(start) } else { start(nil) }
+        // Recording and scrolling capture work on the live screen, so they never freeze it.
+        if intent == .screenshot, target != .scrolling { withFrozenScreen(start) } else { start(nil) }
     }
 
     private func perform(_ request: CaptureRequest, frozen: FrozenScreens?) {
         if request.intent == .recording {
             Task { await ScreenRecorder.shared.begin(request) }
+            return
+        }
+        if request.target == .scrolling {
+            ScrollingCaptureController.begin(rect: request.rect, screen: request.screen)
             return
         }
         Task {
@@ -55,6 +63,8 @@ final class Coordinator {
                         let (image, scale) = try await ScreenCapturer.capture(rect: request.rect, on: request.screen)
                         didCapture(image, pixelScale: scale)
                     }
+                case .scrolling:
+                    break
                 case .window:
                     guard let w = request.window else { return }
                     var shot: (CGImage, CGFloat)?

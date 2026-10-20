@@ -1,7 +1,12 @@
 import AppKit
 
 enum CaptureIntent { case screenshot, recording }
-enum CaptureTarget { case fullscreen, window, area }
+enum CaptureTarget {
+    case fullscreen, window, area, scrolling
+
+    /// Area and scrolling captures both use the adjustable rectangle selection.
+    var usesAreaSelection: Bool { self == .area || self == .scrolling }
+}
 
 /// What the user confirmed in a capture session.
 struct CaptureRequest {
@@ -113,7 +118,7 @@ final class CaptureSession {
 
     var canConfirm: Bool {
         switch target {
-        case .area: return (selection?.width ?? 0) >= 4 && (selection?.height ?? 0) >= 4
+        case .area, .scrolling: return (selection?.width ?? 0) >= 4 && (selection?.height ?? 0) >= 4
         case .fullscreen: return true
         case .window: return false // a window is confirmed by clicking it
         }
@@ -121,10 +126,10 @@ final class CaptureSession {
 
     func confirm() {
         switch target {
-        case .area:
+        case .area, .scrolling:
             guard canConfirm, let sel = selection, let screen = selectionScreen else { return NSSound.beep() }
             if Settings.rememberSelection { Settings.lastSelection = sel }
-            finish(CaptureRequest(intent: intent, target: .area, screen: screen, rect: sel, window: nil))
+            finish(CaptureRequest(intent: intent, target: target, screen: screen, rect: sel, window: nil))
         case .fullscreen:
             let screen = NSScreen.withMouse
             finish(CaptureRequest(intent: intent, target: .fullscreen, screen: screen, rect: screen.frame, window: nil))
@@ -144,7 +149,8 @@ final class CaptureSession {
 
     /// Re-applies anything that depends on mode or options (frozen backdrop, toolbar, drawing).
     func stateChanged() {
-        let showFrozen = intent == .screenshot
+        // Scrolling capture needs the live screen.
+        let showFrozen = intent == .screenshot && target != .scrolling
         windows.forEach { $0.setBackdropVisible(showFrozen) }
         toolbar?.refresh()
         updateCursor()
@@ -163,7 +169,7 @@ final class CaptureSession {
         r.origin.y = min(max(r.minY, f.minY), f.maxY - h)
         selection = r
         selectionScreen = screen
-        if target != .area { target = .area }
+        if !target.usesAreaSelection { target = .area }
         stateChanged()
     }
 
@@ -181,7 +187,7 @@ final class CaptureSession {
     }
 
     private func handle(at p: CGPoint) -> Handle? {
-        guard target == .area, let sel = selection else { return nil }
+        guard target.usesAreaSelection, let sel = selection else { return nil }
         return handlePoints(for: sel).first { hypot($0.1.x - p.x, $0.1.y - p.y) <= Self.handleRadius + 5 }?.0
     }
 
@@ -189,7 +195,7 @@ final class CaptureSession {
         switch target {
         case .window, .fullscreen:
             Self.cameraCursor.set()
-        case .area:
+        case .area, .scrolling:
             if let h = handle(at: mouse) {
                 switch h {
                 case .left, .right: NSCursor.resizeLeftRight.set()
@@ -242,7 +248,7 @@ final class CaptureSession {
             if hoverWindow != nil { confirm() }
         case .fullscreen:
             confirm()
-        case .area:
+        case .area, .scrolling:
             if let h = handle(at: mouse), let sel = selection {
                 drag = .resize(handle: h, original: sel)
             } else if let sel = selection, sel.contains(mouse) {
@@ -257,7 +263,7 @@ final class CaptureSession {
 
     func mouseDragged(shift: Bool) {
         mouse = NSEvent.mouseLocation
-        guard target == .area, let drag else { return }
+        guard target.usesAreaSelection, let drag else { return }
         switch drag {
         case .create(let start, let screen):
             var dx = mouse.x - start.x, dy = mouse.y - start.y
@@ -331,9 +337,10 @@ final class CaptureSession {
         case 36, 76: confirm() // Return
         case 49: // Space cycles fullscreen → window → area
             let next: CaptureTarget = target == .fullscreen ? .window : target == .window ? .area : .fullscreen
+            if next == .fullscreen, target == .area, intent == .screenshot { return set(intent: intent, target: .scrolling) }
             set(intent: intent, target: next)
         case 123, 124, 125, 126: // arrows: move, ⌥ resizes
-            guard target == .area, var r = selection, let screen = selectionScreen else { return }
+            guard target.usesAreaSelection, var r = selection, let screen = selectionScreen else { return }
             let dx: CGFloat = event.keyCode == 123 ? -step : event.keyCode == 124 ? step : 0
             let dy: CGFloat = event.keyCode == 125 ? -step : event.keyCode == 126 ? step : 0
             if option {
@@ -442,7 +449,7 @@ final class SessionView: NSView {
         let recording = session.intent == .recording
         let dim = NSColor.black.withAlphaComponent(0.35)
         switch session.target {
-        case .area:
+        case .area, .scrolling:
             if let sel = session.selection, screen.frame.intersects(sel) {
                 let r = local(sel)
                 let path = NSBezierPath(rect: bounds)
@@ -456,7 +463,10 @@ final class SessionView: NSView {
                 bounds.fill(using: .sourceOver)
                 if session.selection == nil, screen.frame.contains(session.mouse) {
                     drawCrosshair(at: local(session.mouse))
-                    OverlayLabel.draw(recording ? "Drag to record a part of the screen" : "Drag to select an area",
+                    let prompt = recording ? "Drag to record a part of the screen"
+                        : session.target == .scrolling ? "Drag to capture the scrolling part of the screen"
+                        : "Drag to select an area"
+                    OverlayLabel.draw(prompt,
                                       centeredAt: CGPoint(x: bounds.midX, y: bounds.maxY - 70), in: self, large: true)
                 }
             }

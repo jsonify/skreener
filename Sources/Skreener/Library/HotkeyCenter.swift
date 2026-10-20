@@ -27,7 +27,7 @@ struct Hotkey {
 }
 
 enum HotkeyAction: UInt32, CaseIterable {
-    case captureArea = 1, captureFullscreen, captureWindow, capturePreviousArea, captureText, toggleRecording, pickColor, watchArea
+    case captureArea = 1, captureFullscreen, captureWindow, capturePreviousArea, captureText, toggleRecording, pickColor, watchArea, scrollingCapture
 
     var title: String {
         switch self {
@@ -39,6 +39,7 @@ enum HotkeyAction: UInt32, CaseIterable {
         case .toggleRecording: "Record Screen…"
         case .pickColor: "Pick Color From Screen"
         case .watchArea: "Watch Area for Changes"
+        case .scrollingCapture: "Scrolling Capture…"
         }
     }
 
@@ -55,6 +56,7 @@ enum HotkeyAction: UInt32, CaseIterable {
         case .toggleRecording: return Hotkey(keyCode: UInt32(kVK_ANSI_6), modifiers: mods, keyEquivalent: "6")
         case .pickColor: return Hotkey(keyCode: UInt32(kVK_ANSI_8), modifiers: mods, keyEquivalent: "8")
         case .watchArea: return Hotkey(keyCode: UInt32(kVK_ANSI_9), modifiers: mods, keyEquivalent: "9")
+        case .scrollingCapture: return Hotkey(keyCode: UInt32(kVK_ANSI_0), modifiers: mods, keyEquivalent: "0")
         }
     }
 }

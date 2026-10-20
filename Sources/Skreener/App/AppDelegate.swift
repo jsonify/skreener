@@ -24,6 +24,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 case .toggleRecording: c.toggleRecording()
                 case .pickColor: c.pickColor()
                 case .watchArea: c.toggleWatchArea()
+                case .scrollingCapture: c.scrollingCapture()
                 }
             }
         }

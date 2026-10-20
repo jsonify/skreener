@@ -36,7 +36,7 @@ Nothing here comes from running CleanShot.
 | 6 | Capture window, with or without shadow | `CSWindowFilter`, `ScreenCaptureKit.ContentCache` | Observed | window mode in `SelectionController` | ✅ v1 |
 | 7 | Freeze screen during selection | `Freezer`, `FreezerController` | Inferred | — | v2 |
 | 8 | Self-timer | `SelfTimerOverlay`, `SelfTimerDelegate`, `countdown` sound | Observed | — | v2 |
-| 9 | Scrolling capture (auto, classic, Vision-stitched) | `ScrollingGrabber`, `AutomaticScrollingGrabber`, `ClassicScrollingGrabber`, `VisionScrollingGrabber`, `SCONScroll*` | Observed | — | v3 (largest open item) |
+| 9 | Scrolling capture (auto, classic, Vision-stitched) — **done in v1.3, see below** | `ScrollingGrabber`, `AutomaticScrollingGrabber`, `ClassicScrollingGrabber`, `VisionScrollingGrabber`, `SCONScroll*` | Observed | — | v3 (largest open item) |
 | 10 | OCR / Capture Text, with or without line breaks | `OCR`, "Capture Text With/Without Line Breaks", Vision linked | Observed | `TextRecognizer` | ✅ v1 |
 | 11 | Quick Access Overlay (floating thumbnail with actions; drag out) | `OneOverlay`, `OneControlsView`, `FloatingOverlay`, "Show Quick Access Overlay", "Save All Overlays", "Restore Recently Closed" | Observed | `QuickAccessManager` / `QuickAccessPanel` | ✅ v1 |
 | 12 | Annotation editor | `AnnotateController`, `ANCanvasController`, tools `ANArrow` (4 arrow generators), `ANLine`, `ANRectangle`, `ANFilledRectangle`, `ANEllipse`, `ANText`, `ANTextEmojiLayer`, `ANHighlighter`, `ANDraw`, `ANPixelate`, `ANCounter`, `ANSpotlight`, `ANCropController`, `ANZoomController` | Observed | `Annotate/*` | ✅ v1: arrow, line, rect, filled rect, ellipse, text, highlighter, pen, pixelate, counter, crop, select/move, undo/redo · spotlight, emoji, zoom in v2 |
@@ -113,3 +113,32 @@ Evidence (strings in `ev_72538edab9bd…c13610`'s binary and classes in `ev_6092
 | Recording controls: pause, restart, discard | `RecordingControlBar`, `RecordingWriter.pause/resume` (host-clock retiming) |
 | Click highlights / keystrokes / camera bubble (recorded) | `ClickHighlighter`, `KeystrokeOverlay`, `CameraOverlay`, kept in the video by excluding only Skreener's other windows from the `SCContentFilter` |
 | GIF output | `GIFExporter` (ImageIO, 15 fps, ≤960 px) |
+
+## Scrolling capture (v1.3)
+
+Evidence:
+
+- **Classes** (`ev_6092942d…8403a`):
+  - `ScrollingGrabber` has a single `captureAndCompare` method and fields `shotA`, `shotB`, `lastComparedShot`, `lastMatch`, `mergedImage`, `headerHeight`, `heightDiff`, `matchNotFoundCount`, `timer`, `captureRect`, `horizontalMode` and `windowID`.
+  - Its subclasses are `AutomaticScrollingGrabber` (`matches`, `finalMatch`, `isPaused`), `ClassicScrollingGrabber` and `VisionScrollingGrabber`.
+  - Direction detection: `ScrollingGrabberDirectionDetectionDelegate`, plus `horizontalMatches` / `verticalMatches` / `isDetecting` on `SGOverlay`.
+- **Imports** (`ev_72538edab9bd…c13610`): `CGEventCreateScrollWheelEvent2`, `CGEventPost`, `CGEventTapCreate`, `AXIsProcessTrustedWithOptions`, `VNTranslationalImageRegistrationRequest`, `vDSP_*` and `vImage*`.
+- **Strings:** "Drag to capture the scrolling part of the screen.", "Auto-Scroll needs accessibility permissions", "Please slow down...", "Screenshot is very large", "Move cursor here to start scrolling", and the onboarding text about scrolling slowly, one direction only, and excluding scroll bars.
+
+How the observed design maps to Skreener's implementation:
+
+| Observed design | Skreener |
+|---|---|
+| Timer → `captureAndCompare` → merged image | `ScrollingCaptureController` (120 ms tick) → `ScrollStitcher.add` |
+| Classic matcher (vImage/vDSP) | Exact per-line FNV hashes, offset voting, verification on lines with content; scroll-bar edge ignored |
+| Vision matcher | `VNTranslationalImageRegistrationRequest` proposal, confirmed by 16-block luminance signatures; coarse signature search as a last resort |
+| `headerHeight` | Sticky header/footer detected per match; the footer is appended once at the end |
+| Vertical/horizontal detection | Two stitchers run until one matches, then that axis is locked |
+| Auto-Scroll via synthetic wheel events | Pixel-unit `CGEvent` scroll at the cursor, wait for it to settle, capture, match; adaptive step on overshoot; auto-finish when nothing moves |
+| `isPaused` + "Move cursor here…" | Auto-Scroll pauses while the cursor is outside the area |
+
+Verified on synthetic pages:
+
+- **Exact frames:** pixel-identical results, vertical and horizontal, with sticky header and footer and a moving overlay scroll bar.
+- **Noisy frames (±3 per channel):** correct offsets on every step, about 40 ms per frame.
+- **Error cases:** "too fast", "backwards" and recovery all detected correctly.

@@ -11,6 +11,7 @@ enum URLCommand {
         "capture-window": { $0.captureWindow() },
         "capture-text": { $0.captureText() },
         "record-screen": { $0.toggleRecording() },
+        "scrolling-capture": { $0.scrollingCapture() },
         "capture-toolbar": { $0.openCaptureToolbar(intent: .screenshot, target: .area) },
         "pick-color": { $0.pickColor() },
         "watch-area": { $0.toggleWatchArea() },

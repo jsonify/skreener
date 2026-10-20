@@ -26,6 +26,7 @@ quit and reopen Skreener.
 | Capture toolbar, record mode / stop recording | ⌘⇧6 | `skreener://record-screen` |
 | Pick color from screen (hex → clipboard) | ⌘⇧8 | `skreener://pick-color` |
 | Watch area: auto-capture when it changes (again to stop) | ⌘⇧9 | `skreener://watch-area` |
+| Scrolling capture | ⌘⇧0 | `skreener://scrolling-capture` |
 
 > macOS reserves ⌘⇧3/4/5/6 for its own screenshot tools. Turn those off in System Settings ›
 > Keyboard › Keyboard Shortcuts… › Screenshots, and quit CleanShot X if it's running, or they win.
@@ -52,6 +53,16 @@ A floating bar at the bottom of the screen, like macOS's own ⌘⇧5, with these
 - **While recording**: a floating bar with stop, pause/resume, restart, discard and an elapsed timer. The menu-bar item shows the time too.
   Click highlights, keystrokes and the camera bubble appear in the video; the controls and border don't.
   Keystrokes need the Accessibility permission. Window recordings capture just that window, without the overlays.
+
+## Scrolling capture (⌘⇧0, or the scroll button in the toolbar)
+
+1. Select only the scrolling content. Leave out fixed sidebars and the scroll bar. Then press **Continue**.
+2. Press **Start**, then scroll slowly down or right. The direction is detected automatically and can't change mid-capture.
+   A live preview grows beside the area. "Please slow down…" means a scroll jumped past the overlap; scroll back a little.
+3. Or press **Auto-Scroll ↓ / →**. This needs the Accessibility permission. Skreener scrolls while your cursor is over the area,
+   and pauses with "Move cursor here to start scrolling" when the cursor leaves. It slows itself down if it overshoots,
+   and finishes on its own at the end of the content.
+4. **Done** saves the stitched image. Sticky headers and footers appear only once. Esc or **Cancel** aborts.
 
 ## Freeze screen
 

@@ -54,6 +54,7 @@ final class CaptureToolbar: NSPanel, NSTextFieldDelegate {
             mode(.screenshot, .fullscreen, NSImage.symbol("rectangle.inset.filled", size: 17), "Capture Entire Screen"),
             mode(.screenshot, .window, NSImage.symbol("macwindow", size: 17), "Capture Selected Window"),
             mode(.screenshot, .area, NSImage.symbol("rectangle.dashed", size: 17), "Capture Selected Portion"),
+            mode(.screenshot, .scrolling, NSImage.symbol("scroll", size: 17), "Scrolling Capture"),
         ])
         let recordGroup = group([
             mode(.recording, .fullscreen, Self.recordSymbol("rectangle.inset.filled.badge.record"), "Record Entire Screen"),
@@ -162,7 +163,7 @@ final class CaptureToolbar: NSPanel, NSTextFieldDelegate {
         for (intent, target, button) in modeButtons {
             button.isSelected = intent == session.intent && target == session.target
         }
-        let isArea = session.target == .area
+        let isArea = session.target.usesAreaSelection
         sizeGroup.isHidden = !isArea
         if isArea, !(firstResponder is NSTextView) {
             let sel = session.selection
@@ -175,7 +176,8 @@ final class CaptureToolbar: NSPanel, NSTextFieldDelegate {
         ratioButton.item(at: 0)?.title = ratioTitle
 
         let recording = session.intent == .recording
-        primaryButton.attributedTitle = NSAttributedString(string: recording ? "Record" : "Capture", attributes: [
+        let title = recording ? "Record" : session.target == .scrolling ? "Continue" : "Capture"
+        primaryButton.attributedTitle = NSAttributedString(string: title, attributes: [
             .foregroundColor: NSColor.white, .font: NSFont.systemFont(ofSize: 13, weight: .semibold),
         ])
         primaryButton.image = recording ? NSImage.symbol("record.circle", size: 13) : nil

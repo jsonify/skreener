@@ -23,6 +23,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         add(HotkeyAction.captureFullscreen, #selector(captureFullscreen))
         add(HotkeyAction.captureWindow, #selector(captureWindow))
         add(HotkeyAction.captureText, #selector(captureText))
+        add(HotkeyAction.scrollingCapture, #selector(scrollingCapture))
         add("Capture Toolbar…", #selector(openToolbar))
         menu.addItem(.separator())
         let record = add(HotkeyAction.toggleRecording, #selector(toggleRecording))
@@ -101,6 +102,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
     @objc private func capturePreviousArea() { Coordinator.shared.capturePreviousArea() }
     @objc private func captureFullscreen() { Coordinator.shared.captureFullscreen() }
     @objc private func captureWindow() { Coordinator.shared.captureWindow() }
+    @objc private func scrollingCapture() { Coordinator.shared.scrollingCapture() }
     @objc private func openToolbar() { Coordinator.shared.openCaptureToolbar(intent: .screenshot, target: .area) }
     @objc private func captureText() { Coordinator.shared.captureText() }
     @objc private func toggleRecording() { Coordinator.shared.toggleRecording() }
